@@ -13,14 +13,15 @@ http    = require('http').Server(app)
 io      = require('socket.io')(http)
 serialport = require("serialport")
 async = require("async")
+stats = require("stats-lite")
 app.use(express.static('public'))
 
-
-serial = new serialport.SerialPort "/dev/tty.usbmodem1421",
+serial = new serialport.SerialPort process.argv[2],
         parser: serialport.parsers.readline "\n"
         baudrate: 9600
 serial.isconnected = false
-aggInterval = 250
+aggInterval = 100
+
 
 class PhoneData
   @CURR_ID = 1
@@ -33,11 +34,11 @@ class PhoneData
     @z += data.z
     @count += 1
   agg: ->
-    @avg = x: @x/@count, y: @y/@count, z: @z/@count
+    @aggdata = x: @x/@count, y: @y/@count, z: @z/@count, id:@id
     @x = @y = @z = @count = 0
-    @avg
+    @aggdata
   send: (ms, callback) ->
-    sendCmd @id, @avg.x, ms, callback
+    sendCmd @id, @aggdata.x, ms, callback
 
 map = (x, in_min, in_max, out_min, out_max)=>
   x = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
@@ -68,6 +69,7 @@ io.on 'connection', (socket)=>
   console.log "client " + @phoneDatas[socket].id + " connected"
 
   socket.on "boogy_data", (data) =>
+    #console.log "boogy data: " + JSON.stringify(data)
     @phoneDatas[socket].add(data)
 
 serial.on 'open', () =>
@@ -81,26 +83,30 @@ serial.on 'open', () =>
     console.error "serial error: " + err
 
 setInterval =>
-  pds = (pd for sock,pd in @phoneDatas)
+  pds = (pd for sock,pd of @phoneDatas)
+  #console.log "phoneDatas: " + JSON.stringify(pds)
 
-  aggs = (pd.agg() for pd in pds)
-  aggs = (agg for agg in aggs when agg.x)
-  if aggs.length
-    allx = (agg.x for agg in aggs).reduce (a,b) -> a+b
-    ally = (agg.y for agg in aggs).reduce (a,b) -> a+b
-    allz = (agg.z for agg in aggs).reduce (a,b) -> a+b
-    all = { x: allx/aggs.length, y: ally/aggs.length, z: allz/aggs.length }
-    io.emit 'agg_data', all
+  (pd.agg() for pd in pds)
+  pds = (pd for pd in pds when pd.aggdata.x)
+  accels = (pd.aggdata for p in pds)
+  if pds.length
+    avgx = stats.mean(accel.x for accel in accels)
+    avgy = stats.mean(accel.y for accel in accels)
+    avgz = stats.mean(accel.z for accel in accels)
+    avgs = { x: avgx, y: avgy, z: avgz, id: 0 }
+    accels.push(avgs)
+
+    # send all agg data to each client
+    console.log "Sending agg_data: " + JSON.stringify(accels)
+    io.emit 'agg_data', accels
 
     sends = []
-    for pd in pds
-      sends.push (cb) ->
-        pd.send 200
-        cb null, pd.id
-    if all.x
-      sends.unshift (cb) ->
-        sendCmd 0, all.x, 100
-        cb null, 0
+    for accel in accels
+      do (accel) ->
+        sends.push (cb) =>
+          #console.log "sending: " + JSON.stringify(accel)
+          sendCmd accel.id, accel.x, 200
+          cb null, accel.id
     async.series sends#, (err, result) ->
         #console.log "series error: " + err
         #console.log "series result: " + result

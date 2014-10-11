@@ -27,7 +27,7 @@ int servoPins[] = { D0_ROTATION_PIN,     // S00
                     D2_PIN,              // S05
                     D3_PIN,              // S06
                     D4_PIN,              // S07
-                    D5_PIN,              // S08
+                    //D5_PIN,              // S08
                   };
                   
 int ledPins[] = { LED1_RED_PIN,          // L00
