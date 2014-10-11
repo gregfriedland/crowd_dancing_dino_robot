@@ -55,6 +55,9 @@ class barXYZViz
     $("#bars#{@id} #yViz .slider").css("left", "#{data.y}%")
     $("#bars#{@id} #zViz .slider").css("left", "#{data.z}%")
 
+  remove:=>
+    #console.log "Removing" + $("#bars#{@id}")
+    $("#bars#{@id}").html("")
 
 a = new accel()
 r = new reporter()
@@ -62,10 +65,21 @@ r.start()
 a.start()
 
 r.add_agg_callback (datas) =>
+  currids = { '0':true, '-1':true }
   for data in datas
     if !@vizs[data.id]
       @vizs[data.id] = new barXYZViz(data.id, "#othersdata")
     @vizs[data.id].update(data)
+    currids[data.id] = true
+  # console.log "agg found ids #{currids}"
+
+  # remove old ids
+  for id, viz of @vizs
+    if !currids[id]
+      console.log "agg missing id #{id}"
+      console.log @vizs[id]
+      @vizs[id].remove()
+      delete @vizs[id]
 
 $(document).ready =>
   @vizs = {}

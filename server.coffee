@@ -52,7 +52,7 @@ map = (x, in_min, in_max, out_min, out_max)=>
 sendCmd = (servo, val, ms, callback) ->
     angle = map val, -5, 5, 45, 135
     cmd = "S" + pad(Math.floor(servo), 2) + pad(Math.floor(angle), 3) + pad(Math.floor(ms), 4)
-    console.log("Sending cmd: " + cmd)
+    #console.log "Sending cmd: " + cmd
     if serial.isconnected
       serial.write cmd + "\n", callback
 
@@ -97,7 +97,7 @@ setInterval =>
     accels.push(avgs)
 
     # send all agg data to each client
-    console.log "Sending agg_data: " + JSON.stringify(accels)
+    #console.log "Sending agg_data: " + JSON.stringify(accels)
     io.emit 'agg_data', accels
 
     sends = []
