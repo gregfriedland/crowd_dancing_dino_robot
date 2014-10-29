@@ -10,3 +10,5 @@ phone accelerometer data. So you could browse to the website with your phone, pu
 then the dinosaurs would dance with you!
 
 Here is the Arduino code for controlling the servos and node.js code for aggregating the accelerometer data.
+
+Here's a [video of our demo](https://www.youtube.com/watch?v=OjB0QIuvE24#t=5382) explaining the project.
