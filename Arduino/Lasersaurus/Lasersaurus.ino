@@ -5,19 +5,16 @@
 #define D0_ROTATION_PIN   2 // S00
 #define D0_FRONT_LEG_PIN  3 // S01
 #define D0_BACK_LEG_PIN   4 // S02
-#define D0_HEAD_PIN       6 // S03
-#define D1_PIN            7 // S04
-#define D2_PIN            5 // S06
-//#define D5_PIN         10 // S05
-#define D3_PIN            8 // S07
-#define D4_PIN            9 // S08
+#define D0_HEAD_PIN       8 // S03
+#define D1_PIN            5 // S04
+#define D2_PIN            6 // S05
+#define D3_PIN            9 // S06
+#define D4_PIN            10 // S07
 
-#define LED1_RED_PIN      12  // L00
-#define LED1_GREEN_PIN    13  // L01
-#define LED1_BLUE_PIN     14  // L02
+#define LED1_RED_PIN      7  // L00
 // END CONFIGURE
 
-#define NUM_LEDS          3
+#define NUM_LEDS          1
 #define NUM_SERVOS        8
 int servoPins[] = { D0_ROTATION_PIN,     // S00
                     D0_FRONT_LEG_PIN,    // S01
@@ -27,12 +24,9 @@ int servoPins[] = { D0_ROTATION_PIN,     // S00
                     D2_PIN,              // S05
                     D3_PIN,              // S06
                     D4_PIN,              // S07
-                    //D5_PIN,              // S08
                   };
                   
 int ledPins[] = { LED1_RED_PIN,          // L00
-                  LED1_GREEN_PIN,        // L01
-                  LED1_BLUE_PIN          // L02
                 };
 
 #define p(x) Serial.print(x)
@@ -48,7 +42,7 @@ unsigned long lastUpdateTime = 0;
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println("Starting");
   
   for (int i = 0; i < NUM_SERVOS; i++) {
@@ -73,7 +67,7 @@ void serialEvent() {
     inBuffer += inChar;
     if (inChar == '\n') {
       cmdComplete = true;
-      p(inBuffer); p("\n");
+      //p(inBuffer); p("\n");
     }
   }
 }
@@ -99,7 +93,7 @@ void loop()
       
       toAngles[servoNum] = toAngle;
       toTimes[servoNum] = time + millis();
-      p("Parsed command "); p(servoNum); p(" "); p(toAngle); p(" "); p(time); p("\n");
+      p("Servo "); p(servoNum); p(" to "); p(toAngle); p(" in "); p(time); p("ms\n");
     } else if (cmd.length() == 6 && cmd[0] == 'L') {
       int ledNum = cmd.substring(1,3).toInt();
       int brightness  = cmd.substring(3,5).toInt();   
@@ -108,11 +102,13 @@ void loop()
         p("Invalid led: "); p(ledNum); Serial.println();
         return;
       }      
-      brightness = brightness*255/100;
+      brightness = 255 - brightness*255/100;
       analogWrite(ledPins[ledNum], brightness);
       p("Writing "); p(brightness); p(" for led "); p(ledNum); p("\n");
+    } else { //if (cmd.length() > 0) {
+      p("Invalid (");p(cmd.length());p("): '"); p(cmd); p("'\n");
     }
-  }
+  } 
   
   if (millis() - lastUpdateTime > UPDATE_TIME) {
     lastUpdateTime = millis();
@@ -127,7 +123,7 @@ void loop()
       servos[i].write(int(angle));
       currAngles[i] = angle;
       if (periodsLeft == 1) {
-        p("D"); p(i); p("\n"); 
+        p("Servo "); p(i); p(" done\n"); 
       }
     }
   }

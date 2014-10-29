@@ -18,10 +18,10 @@ app.use(express.static('public'))
 
 serial = new serialport.SerialPort process.argv[2],
         parser: serialport.parsers.readline "\n"
-        baudrate: 9600
+        baudrate: 115200
 serial.isconnected = false
-aggInterval = 100
-
+aggInterval = 1000
+debug = false
 
 class PhoneData
   @CURR_ID = 1
@@ -72,6 +72,14 @@ io.on 'connection', (socket)=>
     #console.log "boogy data: " + JSON.stringify(data)
     @phoneDatas[socket].add(data)
 
+if debug
+  debugSocket = 'debug'
+  @phoneDatas[debugSocket] = new PhoneData()
+  console.log "(test) client " + @phoneDatas[debugSocket].id + " connected"
+  setInterval =>
+    @phoneDatas[debugSocket].add({x:1,y:1,z:1})
+  ,50
+
 serial.on 'open', () =>
   console.log 'serial open'
 
@@ -88,8 +96,10 @@ setInterval =>
 
   (pd.agg() for pd in pds)
   pds = (pd for pd in pds when pd.aggdata.x)
-  accels = (pd.aggdata for p in pds)
+  accels = (pd.aggdata for pd in pds)
   if pds.length
+    #console.log (pd.aggdata for pd in pds)
+
     avgx = stats.mean(accel.x for accel in accels)
     avgy = stats.mean(accel.y for accel in accels)
     avgz = stats.mean(accel.z for accel in accels)
