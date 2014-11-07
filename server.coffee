@@ -26,22 +26,6 @@ loglevel = 1
 maxAccel = 3
 disableRotation = true
 
-class PhoneData
-  @CURR_ID = 1
-  constructor: ->
-    @id = @constructor.CURR_ID++
-    @x = @y = @z = @count = 0
-  add:(data) ->
-    @x += data.x
-    @y += data.y
-    @z += data.z
-    @count += 1
-  agg: ->
-    @aggdata = x: @x/@count, y: @y/@count, z: @z/@count, id:@id
-    @x = @y = @z = @count = 0
-    @aggdata
-  send: (ms, callback) ->
-    sendCmd @id, @aggdata.x, ms, callback
 
 log = (level, msg) ->
   if loglevel >= level
@@ -64,6 +48,32 @@ map = (x, in_min, in_max, out_min, out_max)=>
   else
     x
 
+pad = (n, width) => 
+  n += ''
+  if n.length >= width
+    n
+  else
+    new Array(width - n.length + 1).join('0') + n
+
+
+class PhoneData
+  @CURR_ID = 1
+  constructor: ->
+    @id = @constructor.CURR_ID++
+    @x = @y = @z = @count = 0
+  add:(data) ->
+    @x += data.x
+    @y += data.y
+    @z += data.z
+    @count += 1
+  agg: ->
+    @aggdata = x: @x/@count, y: @y/@count, z: @z/@count, id:@id
+    @x = @y = @z = @count = 0
+    @aggdata
+  send: (ms, callback) ->
+    sendCmd @id, @aggdata.x, ms, callback
+
+
 sendCmd = (servo, val, ms, callback) ->
     if servo == 0
       angle = map val, -maxAccel, maxAccel, 80, 100
@@ -79,12 +89,6 @@ sendCmd = (servo, val, ms, callback) ->
     if serial.isconnected
       serial.write cmd + "\n", callback
 
-pad = (n, width) => 
-  n += ''
-  if n.length >= width
-    n
-  else
-    new Array(width - n.length + 1).join('0') + n
 
 @phoneDatas = {}
 io.on 'connection', (socket)=>
@@ -95,6 +99,7 @@ io.on 'connection', (socket)=>
     log 3, "boogy data: " + JSON.stringify(data)
     @phoneDatas[socket].add(data)
 
+
 if debug
   debugSocket = 'debug'
   @phoneDatas[debugSocket] = new PhoneData()
@@ -102,6 +107,7 @@ if debug
   setInterval =>
     @phoneDatas[debugSocket].add({x:1,y:1,z:1})
   ,50
+
 
 serial.on 'open', () =>
   log 0, 'serial open'
@@ -112,6 +118,7 @@ serial.on 'open', () =>
 
   serial.on 'error', (err) ->
     log 0, "serial error: " + err
+
 
 setInterval =>
   pds = (pd for sock,pd of @phoneDatas)
@@ -144,6 +151,10 @@ setInterval =>
       log 3, "series error: " + err
       log 3, "series result: " + result
 , aggInterval
+
+
+require('dns').lookup require('os').hostname(), (err, add, fam) ->
+  console.log('ip: '+add)
 
 portNum = 3344
 log 0, "listening on #{portNum}"
