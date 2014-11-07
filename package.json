@@ -9,6 +9,6 @@
     "stats-lite": "^1.0.3"
   },
   "scripts": {
-    "start": "coffee -c -o public/lib public/src; coffee server.coffee /dev/tty.usbmodem12391"
+    "start": "coffee -c -o public/lib public/src; coffee server.coffee /dev/tty.usbmodem1421"
   }
 }

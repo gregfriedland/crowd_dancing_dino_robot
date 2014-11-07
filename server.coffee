@@ -7,6 +7,14 @@
 # and each connected device is assigned an id corresponding
 # to a another servo
 
+
+# todo
+# - get working with mobile router (directly connected to arduino)
+# - setup bonjour on host
+# - map accel data to all dino servos
+# - have tiny move in a few ways
+
+
 express = require('express')
 app     = express();
 http    = require('http').Server(app)
@@ -14,6 +22,7 @@ io      = require('socket.io')(http)
 serialport = require("serialport")
 async = require("async")
 stats = require("stats-lite")
+_ = require("underscore")
 app.use(express.static('public'))
 
 serial = new serialport.SerialPort process.argv[2],
@@ -24,6 +33,8 @@ aggInterval = 100
 debug = false
 loglevel = 1
 maxAccel = 3
+largeDinoServos = [0, 1, 2, 3]
+smallDinoServos = [4, 5, 6, 7]
 disableRotation = true
 
 
@@ -57,7 +68,7 @@ pad = (n, width) =>
 
 
 class PhoneData
-  @CURR_ID = 1
+  @CURR_ID = smallDinoServos[0]
   constructor: ->
     @id = @constructor.CURR_ID++
     @x = @y = @z = @count = 0
@@ -120,35 +131,47 @@ serial.on 'open', () =>
     log 0, "serial error: " + err
 
 
+avgAccelData = (accelData) =>
+    log 3, "accelData: " + accelData
+    avgx = stats.mean(accel.x for accel in accelData)
+    avgy = stats.mean(accel.y for accel in accelData)
+    avgz = stats.mean(accel.z for accel in accelData)
+    { x: avgx, y: avgy, z: avgz }
+
 setInterval =>
-  pds = (pd for sock,pd of @phoneDatas)
-  log 3, "phoneDatas: " + JSON.stringify(pds)
+    # agg data from different phones
+    pds = (pd for sock,pd of @phoneDatas)
+    log 3, "phoneDatas: " + JSON.stringify(pds)
 
-  (pd.agg() for pd in pds)
-  pds = (pd for pd in pds when pd.aggdata.x)
-  accels = (pd.aggdata for pd in pds)
-  if pds.length
-    log 3, (pd.aggdata for pd in pds)
+    (pd.agg() for pd in pds)
+    pds = (pd for pd in pds when pd.aggdata.x)
+    accelData = (pd.aggdata for pd in pds)
 
-    avgx = stats.mean(accel.x for accel in accels)
-    avgy = stats.mean(accel.y for accel in accels)
-    avgz = stats.mean(accel.z for accel in accels)
-    avgs = { x: avgx, y: avgy, z: avgz, id: 0 }
-    accels.push(avgs)
+    if accelData.length == 0
+      return
 
-    # send all agg data to each client
-    log 3, "Sending agg_data: " + JSON.stringify(accels)
-    io.emit 'agg_data', accels
+    avgData = avgAccelData accelData
+
+    # send avg agg data to each client
+    log 3, "Sending agg_data: " + JSON.stringify(avgData)
+    io.emit 'agg_data', avgData
+ 
+    # add data for tiny's servos
+    accelData.push {x:avgData.x, y:avgData.y, z:avgData.z, id:0}
+    accelData.push {x:avgData.x, y:avgData.y, z:avgData.z, id:1}
+    accelData.push {x:avgData.x, y:avgData.y, z:avgData.z, id:2}
+    accelData.push {x:avgData.x, y:avgData.y, z:avgData.z, id:3}
 
     sends = []
-    for accel in accels
+    for accel in accelData
       do (accel) ->
         sends.push (cb) =>
           log 3, "sending: " + JSON.stringify(accel)
           sendCmd accel.id, accel.x, aggInterval
           cb null, accel.id
     async.series sends, (err, result) ->
-      log 3, "series error: " + err
+      if err
+        log 3, "series error: " + err
       log 3, "series result: " + result
 , aggInterval
 
