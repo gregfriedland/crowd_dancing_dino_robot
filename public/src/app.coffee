@@ -40,10 +40,10 @@ class barXYZViz
   constructor:(id, parent)->
     @id = id
 
-    html =  "<div id=bars#{@id}><h2>id: #{@id}</h2>"
+    html = "<div id=bars#{@id}>"
     html += "<div class='slide_cont' id='xViz'><div class='slider'></div></div>"
-    html += "<div class='slide_cont' id='yViz'><div class='slider'></div></div>"
-    html += "<div class='slide_cont' id='zViz'><div class='slider'></div></div>"
+    #html += "<<div class='slide_cont' id='yViz'><div class='slider'></div></div>"
+    #html += "<div class='slide_cont' id='zViz'><div class='slider'></div></div>"
     html += "</div>"
     $(parent).append(html)
 
@@ -52,8 +52,8 @@ class barXYZViz
     #console.log $("#bars#{@id} #xViz .slider")
     #console.log "To " + JSON.stringify(data)
     $("#bars#{@id} #xViz .slider").css("left", "#{data.x}%")
-    $("#bars#{@id} #yViz .slider").css("left", "#{data.y}%")
-    $("#bars#{@id} #zViz .slider").css("left", "#{data.z}%")
+    #$("#bars#{@id} #yViz .slider").css("left", "#{data.y}%")
+    #$("#bars#{@id} #zViz .slider").css("left", "#{data.z}%")
 
   remove:=>
     #console.log "Removing" + $("#bars#{@id}")
@@ -64,22 +64,23 @@ r = new reporter()
 r.start()
 a.start()
 
-r.add_agg_callback (datas) =>
-  currids = { '0':true, '-1':true }
-  for data in datas
-    if !@vizs[data.id]
-      @vizs[data.id] = new barXYZViz(data.id, "#othersdata")
-    @vizs[data.id].update(data)
-    currids[data.id] = true
+r.add_agg_callback (data) =>
+  console.log "data: " + JSON.stringify(data)
+  @vizs[0].update(data)
+
+#  currids = { '0':true, '-1':true }
+  #  if !@vizs[data.id]
+  #    @vizs[data.id] = new barXYZViz(data.id, "#othersdata")
+  #  currids[data.id] = true
   # console.log "agg found ids #{currids}"
 
   # remove old ids
-  for id, viz of @vizs
-    if !currids[id]
-      console.log "agg missing id #{id}"
-      console.log @vizs[id]
-      @vizs[id].remove()
-      delete @vizs[id]
+  #for id, viz of @vizs
+  #  if !currids[id]
+  #    console.log "agg missing id #{id}"
+  #    console.log @vizs[id]
+  #    @vizs[id].remove()
+  #    delete @vizs[id]
 
 $(document).ready =>
   @vizs = {}

@@ -91,10 +91,8 @@
       this.update = __bind(this.update, this);
       var html;
       this.id = id;
-      html = "<div id=bars" + this.id + "><h2>id: " + this.id + "</h2>";
+      html = "<div id=bars" + this.id + ">";
       html += "<div class='slide_cont' id='xViz'><div class='slider'></div></div>";
-      html += "<div class='slide_cont' id='yViz'><div class='slider'></div></div>";
-      html += "<div class='slide_cont' id='zViz'><div class='slider'></div></div>";
       html += "</div>";
       $(parent).append(html);
     }
@@ -105,9 +103,7 @@
         y: data.y + 50,
         z: data.z + 50
       };
-      $("#bars" + this.id + " #xViz .slider").css("left", "" + data.x + "%");
-      $("#bars" + this.id + " #yViz .slider").css("left", "" + data.y + "%");
-      return $("#bars" + this.id + " #zViz .slider").css("left", "" + data.z + "%");
+      return $("#bars" + this.id + " #xViz .slider").css("left", "" + data.x + "%");
     };
 
     barXYZViz.prototype.remove = function() {
@@ -127,34 +123,9 @@
   a.start();
 
   r.add_agg_callback((function(_this) {
-    return function(datas) {
-      var currids, data, id, viz, _i, _len, _ref, _results;
-      currids = {
-        '0': true,
-        '-1': true
-      };
-      for (_i = 0, _len = datas.length; _i < _len; _i++) {
-        data = datas[_i];
-        if (!_this.vizs[data.id]) {
-          _this.vizs[data.id] = new barXYZViz(data.id, "#othersdata");
-        }
-        _this.vizs[data.id].update(data);
-        currids[data.id] = true;
-      }
-      _ref = _this.vizs;
-      _results = [];
-      for (id in _ref) {
-        viz = _ref[id];
-        if (!currids[id]) {
-          console.log("agg missing id " + id);
-          console.log(_this.vizs[id]);
-          _this.vizs[id].remove();
-          _results.push(delete _this.vizs[id]);
-        } else {
-          _results.push(void 0);
-        }
-      }
-      return _results;
+    return function(data) {
+      console.log("data: " + JSON.stringify(data));
+      return _this.vizs[0].update(data);
     };
   })(this));
 
