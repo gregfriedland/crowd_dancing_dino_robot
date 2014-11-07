@@ -76,10 +76,17 @@ pad = (n, width) =>
     new Array(width - n.length + 1).join('0') + n
 
 
+getNextDinoId = () =>
+  usedIds = (pd.id for pd in @phoneDatas when pd.isActive())
+  log 1, "in use phone ids: " + usedIds
+  for id in smallDinoServos
+    if id not in usedIds
+      return id
+  return -1
+
 class PhoneData
-  @CURR_ID = smallDinoServos[0]
   constructor: ->
-    @id = @constructor.CURR_ID++
+    @id = getNextDinoId()
     @x = @y = @z = @count = 0
   add:(data) ->
     @x += data.x
@@ -91,8 +98,12 @@ class PhoneData
     @x = @y = @z = @count = 0
     @aggdata
   send: (ms, callback) ->
+    # try to get a new id if we don't have one
+    if @id == -1
+      @id = getNextDinoId
     sendCmd @id, @aggdata.x, ms, callback
-
+  isActive: ->
+    typeof @aggdata.x == "undefined"
 
 sendCmd = (servo, val, ms, callback) ->
     if servo == 0
@@ -168,7 +179,6 @@ setInterval =>
     # add data for tiny's servos
     # every minute, the legs are either moving together or out of phase
     accelData.push {x:avgData.x, y:avgData.y, z:avgData.z, id:0}
-    console.log new Date().getMinutes()
     if new Date().getMinutes() % 3 in [0,1]
       accelData.push {x:avgData.x, y:avgData.y, z:avgData.z, id:1}
     else
