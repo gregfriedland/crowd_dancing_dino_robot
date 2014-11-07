@@ -7,12 +7,21 @@
 # and each connected device is assigned an id corresponding
 # to a another servo
 
+# D0_ROTATION_PIN,     // S00
+# D0_FRONT_LEG_PIN,    // S01
+# D0_BACK_LEG_PIN,     // S02
+# D0_HEAD_PIN,         // S03
+# D1_PIN,              // S04
+# D2_PIN,              // S05
+# D3_PIN,              // S06
+# D4_PIN,              // S07
 
 # todo
 # - get working with mobile router (directly connected to arduino)
 # - setup bonjour on host
-# - map accel data to all dino servos
-# - have tiny move in a few ways
+# (DONE) - map accel data to all dino servos
+# (DONE)- have tiny move in a few ways
+# - remap accel data to next small dino when iphone stops sending
 
 
 express = require('express')
@@ -157,9 +166,17 @@ setInterval =>
     io.emit 'agg_data', avgData
  
     # add data for tiny's servos
+    # every minute, the legs are either moving together or out of phase
     accelData.push {x:avgData.x, y:avgData.y, z:avgData.z, id:0}
-    accelData.push {x:avgData.x, y:avgData.y, z:avgData.z, id:1}
-    accelData.push {x:avgData.x, y:avgData.y, z:avgData.z, id:2}
+    console.log new Date().getMinutes()
+    if new Date().getMinutes() % 3 in [0,1]
+      accelData.push {x:avgData.x, y:avgData.y, z:avgData.z, id:1}
+    else
+      accelData.push {x:-avgData.x, y:avgData.y, z:avgData.z, id:1}
+    if new Date().getMinutes() % 3 in [0,2]
+      accelData.push {x:avgData.x, y:avgData.y, z:avgData.z, id:2}
+    else
+      accelData.push {x:-avgData.x, y:avgData.y, z:avgData.z, id:2}
     accelData.push {x:avgData.x, y:avgData.y, z:avgData.z, id:3}
 
     sends = []
