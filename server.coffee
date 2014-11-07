@@ -20,8 +20,11 @@ serial = new serialport.SerialPort process.argv[2],
         parser: serialport.parsers.readline "\n"
         baudrate: 115200
 serial.isconnected = false
-aggInterval = 1000
+aggInterval = 100
 debug = false
+loglevel = 1
+maxAccel = 3
+disableRotation = true
 
 class PhoneData
   @CURR_ID = 1
@@ -40,6 +43,18 @@ class PhoneData
   send: (ms, callback) ->
     sendCmd @id, @aggdata.x, ms, callback
 
+log = (level, msg) ->
+  if loglevel >= level
+    console.log msg
+
+constrain = (x, min, max)=>
+  if x < min
+    min
+  else if x > max
+    max
+  else
+    x
+
 map = (x, in_min, in_max, out_min, out_max)=>
   x = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
   if (x < out_min)
@@ -50,9 +65,17 @@ map = (x, in_min, in_max, out_min, out_max)=>
     x
 
 sendCmd = (servo, val, ms, callback) ->
-    angle = map val, -5, 5, 45, 135
+    if servo == 0
+      angle = map val, -maxAccel, maxAccel, 80, 100
+      if disableRotation
+        angle = 90
+    else
+      angle = map val, -maxAccel, maxAccel, 45, 135
+
     cmd = "S" + pad(Math.floor(servo), 2) + pad(Math.floor(angle), 3) + pad(Math.floor(ms), 4)
-    #console.log "Sending cmd: " + cmd
+    if !disableRotation || servo != 0
+      log 1, "Servo " + servo + " to " + pad(Math.floor(angle), 3) + " in " + ms + "ms (xacc=" + val.toFixed(1) + ")"
+    log 2, "Sending cmd: " + cmd
     if serial.isconnected
       serial.write cmd + "\n", callback
 
@@ -66,39 +89,39 @@ pad = (n, width) =>
 @phoneDatas = {}
 io.on 'connection', (socket)=>
   @phoneDatas[socket] = new PhoneData()
-  console.log "client " + @phoneDatas[socket].id + " connected"
+  log 0, "client " + @phoneDatas[socket].id + " connected"
 
   socket.on "boogy_data", (data) =>
-    #console.log "boogy data: " + JSON.stringify(data)
+    log 3, "boogy data: " + JSON.stringify(data)
     @phoneDatas[socket].add(data)
 
 if debug
   debugSocket = 'debug'
   @phoneDatas[debugSocket] = new PhoneData()
-  console.log "(test) client " + @phoneDatas[debugSocket].id + " connected"
+  log 0, "(test) client " + @phoneDatas[debugSocket].id + " connected"
   setInterval =>
     @phoneDatas[debugSocket].add({x:1,y:1,z:1})
   ,50
 
 serial.on 'open', () =>
-  console.log 'serial open'
+  log 0, 'serial open'
 
   serial.on 'data', (data) =>
-    console.log "  Received: " + data
+    log 2, "  Received: " + data
     serial.isconnected = true
 
   serial.on 'error', (err) ->
-    console.error "serial error: " + err
+    log 0, "serial error: " + err
 
 setInterval =>
   pds = (pd for sock,pd of @phoneDatas)
-  #console.log "phoneDatas: " + JSON.stringify(pds)
+  log 3, "phoneDatas: " + JSON.stringify(pds)
 
   (pd.agg() for pd in pds)
   pds = (pd for pd in pds when pd.aggdata.x)
   accels = (pd.aggdata for pd in pds)
   if pds.length
-    #console.log (pd.aggdata for pd in pds)
+    log 3, (pd.aggdata for pd in pds)
 
     avgx = stats.mean(accel.x for accel in accels)
     avgy = stats.mean(accel.y for accel in accels)
@@ -107,21 +130,21 @@ setInterval =>
     accels.push(avgs)
 
     # send all agg data to each client
-    #console.log "Sending agg_data: " + JSON.stringify(accels)
+    log 3, "Sending agg_data: " + JSON.stringify(accels)
     io.emit 'agg_data', accels
 
     sends = []
     for accel in accels
       do (accel) ->
         sends.push (cb) =>
-          #console.log "sending: " + JSON.stringify(accel)
-          sendCmd accel.id, accel.x, 200
+          log 3, "sending: " + JSON.stringify(accel)
+          sendCmd accel.id, accel.x, aggInterval
           cb null, accel.id
-    async.series sends#, (err, result) ->
-        #console.log "series error: " + err
-        #console.log "series result: " + result
+    async.series sends, (err, result) ->
+      log 3, "series error: " + err
+      log 3, "series result: " + result
 , aggInterval
 
 portNum = 3344
-console.log "listening on #{portNum}"
+log 0, "listening on #{portNum}"
 http.listen(portNum)

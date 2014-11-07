@@ -29,7 +29,8 @@ int servoPins[] = { D0_ROTATION_PIN,     // S00
 int ledPins[] = { LED1_RED_PIN,          // L00
                 };
 
-#define p(x) Serial.print(x)
+//#define p(x) Serial.print(x)
+#define p(x) 
 
 #define UPDATE_TIME      100
 
@@ -67,6 +68,7 @@ void serialEvent() {
     inBuffer += inChar;
     if (inChar == '\n') {
       cmdComplete = true;
+      break;
       //p(inBuffer); p("\n");
     }
   }
